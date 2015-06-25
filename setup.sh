@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-sudo apt-get update -qq
-sudo apt-get install dig -y
+apt-get update -qq
+apt-get install dig -y
 nosetests app/tests
