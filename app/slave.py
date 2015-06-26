@@ -44,11 +44,11 @@ class PublicIp:
 	def __repr__(self):
 		return self.get_current_ip()
 
-	def update_route53(self):
+	def update_route53(self, ttl=60):
 		conn = boto.route53.connect_to_region(self._aws_region)
 		zone = conn.get_zone(self._aws_zone)
 		change_set = boto.route53.record.ResourceRecordSets(conn, zone.id)
-		upsert = change_set.add_change("UPSERT", "%s." % self._aws_domain, "A", ttl=60)
+		upsert = change_set.add_change("UPSERT", "%s." % self._aws_domain, "A", ttl=ttl)
 		upsert.add_value(self.current_ip)
 		ret = change_set.commit()
 		return ret["ChangeResourceRecordSetsResponse"]["ChangeInfo"]["Status"] == u"PENDING"

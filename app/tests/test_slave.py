@@ -61,4 +61,4 @@ class TestPublicIp(unittest.TestCase):
 		self.assertIsNot(None, actual_ip)
 		slave = PublicIp()
 		slave.current_ip = actual_ip
-		slave.update_route53()
+		slave.update_route53(ttl=86400)
