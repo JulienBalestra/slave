@@ -2,6 +2,9 @@
 
 # Slave
 
-Slave is an utility to host services behind a hosted zone
+Slave is an utility to host services behind a hosted zone under Route 53
 
-Slave allow you to get your public IP address
+Features :
+
+* Slave allow you to get your public IP address
+* Slave update the hosted zone with boto API
