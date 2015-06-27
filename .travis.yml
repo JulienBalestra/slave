@@ -5,4 +5,4 @@ language: python
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y dnsutils
-script: ./setup.sh
+script: nosetests app/tests
