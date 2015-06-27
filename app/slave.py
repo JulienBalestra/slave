@@ -44,7 +44,7 @@ class PublicIp:
 	def __repr__(self):
 		return self.get_current_ip()
 
-	def update_route53(self, ttl=60):
+	def update_route53(self, ttl=120):
 		conn = boto.route53.connect_to_region(self._aws_region)
 		zone = conn.get_zone(self._aws_zone)
 		change_set = boto.route53.record.ResourceRecordSets(conn, zone.id)
