@@ -13,7 +13,6 @@ class PublicIp:
 	def __init__(self):
 		self.current_ip = None
 		self.new_ip = None
-		self.updates = 0
 
 	def update_current_ip(self):
 		self.get_public_ip()
@@ -39,7 +38,6 @@ class PublicIp:
 	def get_public_ip(self):
 		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
 		self.new_ip = check_output(dig_command.split(" "))
-		self.updates += 1
 
 	def __repr__(self):
 		return self.get_current_ip()
