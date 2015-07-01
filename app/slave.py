@@ -37,7 +37,10 @@ class PublicIp:
 
 	def get_public_ip(self):
 		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
-		self.new_ip = check_output(dig_command.split(" "))
+		try:
+			self.new_ip = check_output(dig_command.split(" "))
+		except Exception:
+			os.write(2, "Failed to use dig")
 
 	def __repr__(self):
 		return self.get_current_ip()
