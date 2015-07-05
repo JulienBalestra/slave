@@ -40,7 +40,7 @@ class TestPublicIp(unittest.TestCase):
 	def test_update_public_ip_2(self):
 		self.assertTrue(os.path.isfile("current_ip"))
 		stat = os.stat("current_ip")
-		time.sleep(1)
+		time.sleep(2)
 		os.remove("current_ip")
 		slave = PublicIp()
 		slave.update_current_ip()
