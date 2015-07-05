@@ -1,6 +1,9 @@
 from subprocess import check_output
 import boto.route53
 import os
+import logger
+
+LOGGER = logger.get_logger(__name__)
 
 
 class PublicIp:
@@ -19,6 +22,7 @@ class PublicIp:
 		if self.current_ip is None:
 			self.load_current_ip()
 		if self.current_ip != self.new_ip:
+			LOGGER.info("IP address changed from %s to %s" % (str(self.current_ip), self.new_ip))
 			self.current_ip = str(self.new_ip)
 
 	def load_current_ip(self):
@@ -27,10 +31,11 @@ class PublicIp:
 				self.current_ip = r_ip_file.read()
 		except IOError:
 			self.flush_current_ip()
+			self.load_current_ip()
 
 	def flush_current_ip(self):
 		with open("current_ip", "w") as w_ip_file:
-			w_ip_file.write(self.new_ip)
+			w_ip_file.write(self.new_ip)			
 
 	def get_current_ip(self):
 		return self.current_ip
@@ -38,24 +43,25 @@ class PublicIp:
 	def get_public_ip(self):
 		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
 		try:
-			self.new_ip = check_output(dig_command.split(" "))
+			self.new_ip = check_output(dig_command.split(" "))			
 		except Exception as e:
-			os.write(2, "Failed to use dig %s" % e)
+			LOGGER.error("failed run %s: %s" % (dig_command, e))			
 
 	def __repr__(self):
 		return self.get_current_ip()
 
 	def update_route53(self, ttl=120):
-		try:
+		try:			
 			conn = boto.route53.connect_to_region(self._aws_region)
 			zone = conn.get_zone(self._aws_zone)
 			change_set = boto.route53.record.ResourceRecordSets(conn, zone.id)
 			upsert = change_set.add_change("UPSERT", "%s." % self._aws_domain, "A", ttl=ttl)
 			upsert.add_value(self.current_ip)
 			ret = change_set.commit()
+			LOGGER.info("route53 commit done")
 			return ret["ChangeResourceRecordSetsResponse"]["ChangeInfo"]["Status"] == u"PENDING"
 		except Exception as e:
-			os.write(2, "%s" % e)
+			LOGGER.error("failed to update route53: %s" % e)
 
 
 if __name__ == "__main__":
