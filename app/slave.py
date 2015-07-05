@@ -67,4 +67,3 @@ class PublicIp:
 if __name__ == "__main__":
 	slave = PublicIp()
 	slave.update_current_ip()
-	slave.update_route53()
