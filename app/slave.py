@@ -30,12 +30,17 @@ class PublicIp:
 			with open("current_ip", "r") as r_ip_file:
 				self.current_ip = r_ip_file.read()
 		except IOError:
+			LOGGER.warning("current ip file does not exist")
 			self.flush_current_ip()
 			self.load_current_ip()
 
 	def flush_current_ip(self):
 		with open("current_ip", "w") as w_ip_file:
-			w_ip_file.write(self.new_ip)			
+			try:
+				w_ip_file.write(self.new_ip)
+			except TypeError:
+				LOGGER.error("instance <new_ip>: %s not an IP address exist program" % str(self.new_ip))
+				exit(2)
 
 	def get_current_ip(self):
 		return self.current_ip
