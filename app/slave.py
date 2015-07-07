@@ -39,7 +39,7 @@ class PublicIp:
 			try:
 				w_ip_file.write(self.new_ip)
 			except TypeError:
-				LOGGER.error("instance <new_ip>: %s not an IP address exist program" % str(self.new_ip))
+				LOGGER.error("instance <new_ip>: %s not an IP address, exit (2)" % str(self.new_ip))
 				exit(2)
 
 	def get_current_ip(self):
