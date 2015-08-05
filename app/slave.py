@@ -27,7 +27,7 @@ class PublicIp:
 
 	def load_current_ip(self):
 		try:
-			with open("current_ip", "r") as r_ip_file:
+			with open("current_ip", "r") as r_ip_file:  # TODO use nslookup instead of text file
 				self.current_ip = r_ip_file.read()
 		except IOError:
 			LOGGER.warning("current ip file does not exist")
@@ -48,15 +48,15 @@ class PublicIp:
 	def get_public_ip(self):
 		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
 		try:
-			self.new_ip = check_output(dig_command.split(" "))			
+			self.new_ip = check_output(dig_command.split(" "))
 		except Exception as e:
-			LOGGER.error("failed run %s: %s" % (dig_command, e))			
+			LOGGER.error("failed run %s: %s" % (dig_command, e))
 
 	def __repr__(self):
 		return self.get_current_ip()
 
 	def update_route53(self, ttl=120):
-		try:			
+		try:
 			conn = boto.route53.connect_to_region(self._aws_region)
 			zone = conn.get_zone(self._aws_zone)
 			change_set = boto.route53.record.ResourceRecordSets(conn, zone.id)
