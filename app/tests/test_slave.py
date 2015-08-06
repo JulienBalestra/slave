@@ -62,3 +62,7 @@ class TestPublicIp(unittest.TestCase):
 		slave = PublicIp()
 		slave.current_ip = actual_ip
 		slave.update_route53(ttl=86400)
+		
+	def test_get_zone_ip(self):
+		slave = PublicIp()
+		self.assertEqual(4, len(slave.get_zone_ip().split(".")))
