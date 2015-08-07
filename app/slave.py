@@ -46,12 +46,17 @@ class PublicIp:
 
 	def get_current_ip(self):
 		return self.local_ip
-	
-	def get_zone_ip(self):
+
+	def update_zone_ip(self):
 		regex = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
 		nslookup_command = ["nslookup", "%s" % self._aws_zone]
 		ret = check_output(nslookup_command)
 		self.zone_ip = regex.findall(ret.split(self._aws_zone)[1])[0]
+
+	def get_zone_ip(self):
+		if self.zone_ip is None:
+			self.update_zone_ip()
+		return self.zone_ip
 
 	def get_public_ip(self):
 		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
