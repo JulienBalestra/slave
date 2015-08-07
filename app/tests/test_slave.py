@@ -1,6 +1,5 @@
 import unittest
 import os
-from subprocess import check_output
 import time
 import boto.route53
 
@@ -60,9 +59,10 @@ class TestPublicIp(unittest.TestCase):
 				break
 		self.assertIsNot(None, actual_ip)
 		slave = PublicIp()
-		slave.current_ip = actual_ip
+		slave.local_ip = actual_ip
 		slave.update_route53(ttl=86400)
 		
 	def test_get_zone_ip(self):
 		slave = PublicIp()
-		self.assertEqual(4, len(slave.get_zone_ip().split(".")))
+		slave.get_zone_ip()
+		self.assertEqual(4, len(slave.zone_ip.split(".")))
