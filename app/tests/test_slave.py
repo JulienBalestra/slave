@@ -1,72 +1,30 @@
 import unittest
-import os
-import time
-import boto.route53
+import re
+
+from app import slave
 
 
-from app.slave import PublicIp
+class TestSlave(unittest.TestCase):
+	is_ip = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
 
-
-class TestPublicIp(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
-		cls.aws_region = os.getenv("AWS_REGION")
-		cls.aws_domain = os.getenv("AWS_DOMAIN")
-		cls.aws_zone = os.getenv("AWS_ZONE")
-	
-	@classmethod
-	def tearDownClass(cls):
-		os.remove("current_ip")	
-	
-	def test_update_public_ip_0(self):
-		slave = PublicIp()
-		self.assertFalse(os.path.isfile("current_ip"))
-		slave.update_current_ip()
-		self.public = str(slave)
-		ip = str(slave).split(".")
-		self.assertEqual(len(ip), 4)
-		self.assertTrue(os.path.isfile("current_ip"))
-		
-	def test_update_public_ip_1(self):
-		self.assertTrue(os.path.isfile("current_ip"))
-		stat = os.stat("current_ip")
-		slave = PublicIp()
-		slave.update_current_ip()
-		ip = str(slave).split(".")
-		self.assertEqual(len(ip), 4)
-		self.assertTrue(stat == os.stat("current_ip"))	
-		
-	def test_update_public_ip_2(self):
-		self.assertTrue(os.path.isfile("current_ip"))
-		stat = os.stat("current_ip")
-		time.sleep(1)
-		os.remove("current_ip")
-		slave = PublicIp()
-		slave.update_current_ip()
-		ip = str(slave).split(".")
-		self.assertEqual(len(ip), 4)		
-		self.assertFalse(stat == os.stat("current_ip"))
-		
-	def test_update_route53(self):
-		conn = boto.route53.connect_to_region(self.aws_region)
-		zone = conn.get_zone(self.aws_zone)
-		resource = conn.get_all_rrsets(zone.id)
-		
-		actual_ip = None
-		for rc in resource:
-			if rc.name == "%s." % self.aws_domain:
-				actual_ip = rc.resource_records[0]
-				break
-		self.assertIsNot(None, actual_ip)
-		slave = PublicIp()
-		slave.local_ip = actual_ip
-		slave.update_route53(ttl=86400)
-		
-	def test_update_zone_ip(self):
-		slave = PublicIp()
-		slave.update_zone_ip()
-		self.assertEqual(4, len(slave.zone_ip.split(".")))	
-		
-	def test_get_zone_ip(self):
-		slave = PublicIp()
-		self.assertEqual(4, len(slave.get_zone_ip().split(".")))
+		cls.slave = slave.Slave()
+
+	def test_00_get_my_public_ip(self):
+		self.slave.get_my_public_ip()
+		self.assertTrue(self.is_ip.match(self.slave.my_public_ip))
+
+	def test_01_get_registered_ip(self):
+		self.slave.get_registered_ip()
+		self.assertTrue(self.is_ip.match(self.slave.registered_ip))
+
+	def test_02_check_and_update(self):
+		def create_closure(instance):
+			def fake_registered_ip():
+				instance.registered_ip = "1.2.3.4"
+
+			return fake_registered_ip
+
+		self.slave.get_registered_ip = create_closure(self.slave)
+		self.slave.check_and_update()

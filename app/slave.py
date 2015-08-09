@@ -1,5 +1,4 @@
 from subprocess import check_output
-import re
 import boto.route53
 import os
 import logger
@@ -7,81 +6,57 @@ import logger
 LOGGER = logger.get_logger(__name__)
 
 
-class PublicIp:
-	_dig_server = "myip.opendns.com"
-	_dig_resolver = "resolver1.opendns.com"
-	_aws_region = os.getenv("AWS_REGION")
-	_aws_domain = os.getenv("AWS_DOMAIN")
-	_aws_zone = os.getenv("AWS_ZONE")
+class Slave(object):
+	dig_server = "myip.opendns.com"
+	dig_resolver = "resolver1.opendns.com"
+	aws_region = os.getenv("AWS_REGION")
+	aws_domain = os.getenv("AWS_DOMAIN")
+	aws_zone = os.getenv("AWS_ZONE")
 
 	def __init__(self):
-		self.local_ip = None
-		self.zone_ip = None
-		self.new_ip = None
+		self.my_public_ip = ""
+		self.registered_ip = ""
 
-	def update_current_ip(self):
-		self.get_public_ip()
-		if self.local_ip is None:
-			self.load_current_ip()
-		if self.local_ip != self.new_ip:
-			LOGGER.info("IP address changed from %s to %s" % (str(self.local_ip), self.new_ip))
-			self.local_ip = str(self.new_ip)
-
-	def load_current_ip(self):
+	def get_my_public_ip(self):
+		dig_command = ["dig", "+short", self.dig_server, "@%s" % self.dig_resolver]
 		try:
-			with open("current_ip", "r") as r_ip_file:
-				self.local_ip = r_ip_file.read()
-		except IOError:
-			LOGGER.warning("current ip file does not exist")
-			self.flush_current_ip()
-			self.load_current_ip()
-
-	def flush_current_ip(self):
-		with open("current_ip", "w") as w_ip_file:
-			try:
-				w_ip_file.write(self.new_ip)
-			except TypeError:
-				LOGGER.error("instance <new_ip>: %s not an IP address, exit (2)" % str(self.new_ip))
-				exit(2)
-
-	def get_current_ip(self):
-		return self.local_ip
-
-	def update_zone_ip(self):
-		regex = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
-		nslookup_command = ["nslookup", "%s" % self._aws_zone]
-		ret = check_output(nslookup_command)
-		self.zone_ip = regex.findall(ret.split(self._aws_zone)[1])[0]
-
-	def get_zone_ip(self):
-		if self.zone_ip is None:
-			self.update_zone_ip()
-		return self.zone_ip
-
-	def get_public_ip(self):
-		dig_command = "dig +short %s @%s" % (self._dig_server, self._dig_resolver)
-		try:
-			self.new_ip = check_output(dig_command.split(" "))
+			self.my_public_ip = check_output(dig_command).replace("\n", "")
+			LOGGER.info("<%s> my public ip: %s" % (Slave.get_my_public_ip.__name__, self.my_public_ip))
 		except Exception as e:
-			LOGGER.error("failed run %s: %s" % (dig_command, e))
+			LOGGER.error("<%s> failed: [%s] -> %s" % (Slave.get_my_public_ip.__name__, self.registered_ip, e))
 
-	def __repr__(self):
-		return self.get_current_ip()
-
-	def update_route53(self, ttl=120):
+	def get_registered_ip(self):
+		dig_command = ["dig", "+short", "%s" % self.aws_domain]
 		try:
-			conn = boto.route53.connect_to_region(self._aws_region)
-			zone = conn.get_zone(self._aws_zone)
+			self.registered_ip = check_output(dig_command).replace("\n", "")
+			LOGGER.info("<%s> zone ip: %s" % (Slave.get_my_public_ip.__name__, self.registered_ip))
+		except Exception as error:
+			LOGGER.error("<%s> failed: [%s] -> %s" % (Slave.get_registered_ip.__name__, self.registered_ip, error))
+
+	def update_registered_ip(self, ttl=120):
+		try:
+			conn = boto.route53.connect_to_region(self.aws_region)
+			zone = conn.get_zone(self.aws_zone)
 			change_set = boto.route53.record.ResourceRecordSets(conn, zone.id)
-			upsert = change_set.add_change("UPSERT", "%s." % self._aws_domain, "A", ttl=ttl)
-			upsert.add_value(self.local_ip)
+			upsert = change_set.add_change("UPSERT", "%s." % self.aws_domain, "A", ttl=ttl)
+			upsert.add_value(self.my_public_ip)
 			ret = change_set.commit()
-			LOGGER.info("route53 commit done")
+			LOGGER.info(
+				"<%s> route 53 update done with [%s]" % (Slave.update_registered_ip.__name__, self.my_public_ip))
 			return ret["ChangeResourceRecordSetsResponse"]["ChangeInfo"]["Status"] == u"PENDING"
 		except Exception as e:
-			LOGGER.error("failed to update route53: %s" % e)
+			LOGGER.error("<%s> route 53 update failed: %s" % (Slave.update_registered_ip.__name__, e))
+
+	def check_and_update(self):
+		self.get_my_public_ip()
+		self.get_registered_ip()
+		if self.my_public_ip != self.registered_ip:
+			LOGGER.info("<%s> %s != %s" % (Slave.check_and_update.__name__, self.my_public_ip, self.registered_ip))
+			self.update_registered_ip()
+		else:
+			LOGGER.info("<%s> %s == %s" % (Slave.check_and_update.__name__, self.my_public_ip, self.registered_ip))
 
 
 if __name__ == "__main__":
-	slave = PublicIp()
-	slave.update_current_ip()
+	slave = Slave()
+	slave.check_and_update()
