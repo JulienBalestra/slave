@@ -1,6 +1,9 @@
 from subprocess import check_output
-import boto.route53
 import os
+from time import sleep
+
+import boto.route53
+
 import logger
 
 LOGGER = logger.get_logger(__name__)
@@ -42,21 +45,34 @@ class Slave(object):
 			upsert.add_value(self.my_public_ip)
 			ret = change_set.commit()
 			LOGGER.info(
-				"<%s> route 53 updated: [%s]" % (Slave.update_registered_ip.__name__, self.my_public_ip))
+				"<%s> route53 updated: [%s]" % (Slave.update_registered_ip.__name__, self.my_public_ip))
 			return ret["ChangeResourceRecordSetsResponse"]["ChangeInfo"]["Status"] == u"PENDING"
 		except Exception as e:
-			LOGGER.error("<%s> route 53 update failed: %s" % (Slave.update_registered_ip.__name__, e))
+			LOGGER.error("<%s> route53 update failed: %s" % (Slave.update_registered_ip.__name__, e))
 
-	def check_and_update(self):
+	def compare_ip(self):
 		self.get_my_public_ip()
 		self.get_registered_ip()
-		if self.my_public_ip != self.registered_ip:
-			LOGGER.info("<%s> %s != %s" % (Slave.check_and_update.__name__, self.my_public_ip, self.registered_ip))
+		return self.my_public_ip == self.registered_ip
+
+	def query_update_check(self):
+		if self.compare_ip is False:
+			LOGGER.info("<%s> %s != %s" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
 			self.update_registered_ip()
+
+			for i in range(0, 30):
+				if self.compare_ip() is True:
+					LOGGER.info("<%s> now %s == %s {{ SUCCESS }}" %
+						(Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
+					break
+				sleep(5)
+			LOGGER.warning(
+				"<%s> still %s != %s {{ TIMEOUT }}" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
+
 		else:
-			LOGGER.info("<%s> %s == %s" % (Slave.check_and_update.__name__, self.my_public_ip, self.registered_ip))
+			LOGGER.info("<%s> %s == %s" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
 
 
 if __name__ == "__main__":
 	slave = Slave()
-	slave.check_and_update()
+	slave.query_update_check()
