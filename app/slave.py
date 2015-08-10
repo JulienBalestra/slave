@@ -25,6 +25,7 @@ class Slave(object):
 		try:
 			self.my_public_ip = check_output(dig_command).replace("\n", "")
 			LOGGER.debug("<%s> [%s] my public ip" % (Slave.get_my_public_ip.__name__, self.my_public_ip))
+			return self.my_public_ip
 		except Exception as e:
 			LOGGER.error("<%s> failed: [%s] -> %s" % (Slave.get_my_public_ip.__name__, self.registered_ip, e))
 
@@ -33,6 +34,7 @@ class Slave(object):
 		try:
 			self.registered_ip = check_output(dig_command).replace("\n", "")
 			LOGGER.debug("<%s> [%s] zone ip" % (Slave.get_registered_ip.__name__, self.registered_ip))
+			return self.registered_ip
 		except Exception as error:
 			LOGGER.error("<%s> failed: [%s] -> %s" % (Slave.get_registered_ip.__name__, self.registered_ip, error))
 
@@ -51,23 +53,12 @@ class Slave(object):
 			LOGGER.error("<%s> route53 update failed: %s" % (Slave.update_registered_ip.__name__, e))
 
 	def compare_ip(self):
-		self.get_my_public_ip()
-		self.get_registered_ip()
-		return self.my_public_ip == self.registered_ip
+		return self.get_my_public_ip() == self.get_registered_ip()
 
 	def query_update_check(self):
-		if self.compare_ip is False:
+		if self.compare_ip() is False:
 			LOGGER.info("<%s> %s != %s" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
 			self.update_registered_ip()
-
-			for i in range(0, 30):
-				if self.compare_ip() is True:
-					LOGGER.info("<%s> now %s == %s {{ SUCCESS }}" %
-						(Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
-					break
-				sleep(5)
-			LOGGER.warning(
-				"<%s> still %s != %s {{ TIMEOUT }}" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
 
 		else:
 			LOGGER.info("<%s> %s == %s" % (Slave.query_update_check.__name__, self.my_public_ip, self.registered_ip))
