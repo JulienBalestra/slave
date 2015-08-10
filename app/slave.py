@@ -33,7 +33,7 @@ class Slave(object):
 		try:
 			self.registered_ip = check_output(dig_command).replace("\n", "")
 			LOGGER.debug(
-				"<%s> [%s] the zone %s ip" % (Slave.get_registered_ip.__name__, self.aws_zone, self.registered_ip))
+				"<%s> [%s] for domain %s" % (Slave.get_registered_ip.__name__, self.registered_ip, self.aws_domain))
 			return self.registered_ip
 		except Exception as error:
 			LOGGER.error("<%s> failed: [%s] -> %s" % (Slave.get_registered_ip.__name__, self.registered_ip, error))
@@ -47,8 +47,8 @@ class Slave(object):
 			upsert.add_value(self.my_public_ip)
 			ret = change_set.commit()
 			LOGGER.info(
-				"<%s> route53 updated: [%s] in %s" % (
-				Slave.update_registered_ip.__name__, self.my_public_ip, self.aws_zone))
+				"<%s> route53 updated: [%s] in %s -> %s" % (
+				Slave.update_registered_ip.__name__, self.my_public_ip, self.aws_zone, self.aws_domain))
 			return ret["ChangeResourceRecordSetsResponse"]["ChangeInfo"]["Status"] == u"PENDING"
 		except Exception as e:
 			LOGGER.error("<%s> route53 update failed: %s" % (Slave.update_registered_ip.__name__, e))

@@ -26,5 +26,10 @@ class TestSlave(unittest.TestCase):
 
 			return fake_registered_ip
 
+		original_func = self.slave.get_registered_ip
 		self.slave.get_registered_ip = create_closure(self.slave)
+		self.slave.query_update_check()
+		self.slave.get_registered_ip = original_func
+		
+	def test_03_check_and_update(self):
 		self.slave.query_update_check()
