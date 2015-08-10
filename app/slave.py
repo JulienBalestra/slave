@@ -1,6 +1,5 @@
 from subprocess import check_output
 import os
-from time import sleep
 
 import boto.route53
 
